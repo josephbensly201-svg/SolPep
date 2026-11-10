@@ -3,7 +3,7 @@
  * Apre sa, aplikasyon an ouvri san entènèt. Fichye yo rafrechi an background
  * (stale-while-revalidate). Pou fòse yon mizajou, chanje VERSION anba a.
  */
-const VERSION = 'v1.3.0';
+const VERSION = 'v1.4.0';
 const CACHE = `jere-sol-${VERSION}`;
 
 const ASSETS = [
@@ -17,6 +17,10 @@ const ASSETS = [
   './js/format.js',
   './js/install.js',
   './js/schedule.js',
+  './js/cloud.js',
+  './js/version.js',
+  './js/firebase-config.js',
+  './js/views/settings.js',
   './js/ui.js',
   './js/lib/idb.js',
   './js/views/home.js',
@@ -51,6 +55,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // Paj admin: toujou rezo a (pa janm cache, pa janm ranplase pa index.html).
+  if (/\/admin\.(html|js|css)$/.test(url.pathname)) return;
+
   // Navigasyon (ouvri paj la): toujou sèvi ak index.html nan cache.
   if (req.mode === 'navigate') {
     event.respondWith(
@@ -72,4 +79,37 @@ self.addEventListener('fetch', (event) => {
       return cached || (await network) || new Response('', { status: 504, statusText: 'Offline' });
     })
   );
+});
+
+/* ---------- Notifikasyon push ---------- */
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; }
+  catch { payload = { data: { body: event.data ? event.data.text() : '' } }; }
+  const d = payload.data || {};
+  const n = payload.notification || {};
+  const title = d.title || n.title || 'SòlPèp';
+  const body = d.body || n.body || '';
+
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const focused = wins.find((c) => c.focused);
+    if (focused) { focused.postMessage({ type: 'push', data: { title, body } }); return; }   // app la louvri: ti mesaj anndan
+    await self.registration.showNotification(title, {
+      body,
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: d.tag || undefined,
+      data: { url: d.url || './' }
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || './', self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+    for (const c of wins) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow(target);
+  }));
 });

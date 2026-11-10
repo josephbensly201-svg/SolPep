@@ -1,5 +1,6 @@
 /* Paj yon sòl: 3 onglè (Manch / Tablo / Manm), peman pasyèl, nòt, manm inaktif, ekspò CSV. */
 import * as db from '../db.js';
+import { scheduleSync } from '../cloud.js';
 import { key, status } from '../calc.js';
 import { htg, num, toInput, parseAmount } from '../format.js';
 import { FREQUENCIES, dueDate, isPast, formatDate, formatDateShort, currentRound, scheduleFieldsHTML } from '../schedule.js';
@@ -29,6 +30,7 @@ async function refresh() {
   data = await db.getGroupData(view.id);
   if (!data) { location.hash = '#/'; return; }
   render();
+  scheduleSync();
 }
 
 /* ------------------------------------------------------------------ */

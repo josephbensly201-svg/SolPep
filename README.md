@@ -98,3 +98,19 @@ Si vous ajoutez un fichier, ajoutez-le aussi à la liste `ASSETS`.
 - Les données restent **sur l'appareil** : changer de téléphone ou vider les données du navigateur les efface. Exportez régulièrement en CSV.
 - Pas de comptes, pas de synchronisation entre appareils, pas de réorganisation de l'ordre des membres.
 - Pas de mode sombre.
+
+
+## Firebase : statistiques anonymes, rapèl push et administration
+
+Fichiers ajoutés : `js/firebase-config.js`, `js/cloud.js`, `js/views/settings.js`, `admin.html`, `js/admin.js`, `css/admin.css`,
+`scripts/` (envoi des notifications) et `.github/workflows/notify.yml` (tâche planifiée toutes les 15 minutes).
+
+- **Aucune donnée personnelle n'est envoyée** : jamais de nom, de nom de sòl ni de montant. Seulement un identifiant anonyme, la version,
+  la plate-forme, la dernière ouverture et, si l'utilisateur active les rappels, un jeton de notification et les dates des manch (`2026-11-24|3`).
+- L'utilisateur peut tout désactiver dans **Rapèl ak konfidansyalite** (page d'accueil).
+- **Rappels** : une notification la veille et le jour de chaque manch, vers 8 h (heure d'Haïti), envoyée par `scripts/notify.mjs` via GitHub Actions.
+- **Admin** : `https://<votre-site>/admin.html` (connexion e-mail + mot de passe). Statistiques, mode maintenance, annonce, version minimale obligatoire,
+  notification à tous.
+- **Secret requis** dans GitHub (*Settings → Secrets and variables → Actions*) : `FIREBASE_SERVICE_ACCOUNT` = contenu JSON de la clé de compte de service.
+  Ne jamais mettre ce fichier dans le dépôt.
+- Garder `APP_VERSION` (`js/version.js`) et `VERSION` (`service-worker.js`) identiques.

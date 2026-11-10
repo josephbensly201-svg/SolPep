@@ -41,6 +41,12 @@ export function dueDate(group, round) {
   return null;
 }
 
+/** Ajoute n jou sou yon dat ISO. */
+export function addDaysISO(isoDate, n) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return addDays(y, m - 1, d, n);
+}
+
 export const isPast = (isoDate) => !!isoDate && isoDate < todayISO();
 
 /** "2026-11-15" -> "15 novanm 2026" */

@@ -42,6 +42,19 @@ export async function listGroupsOverview() {
     });
 }
 
+/** Tout sòl yo ak done yo (pou kalkile rapèl yo). */
+export async function getAllGroupsData() {
+  const db = await getDB();
+  const [groups, members, payments] = await Promise.all([
+    db.getAll('groups'), db.getAll('members'), db.getAll('payments')
+  ]);
+  return groups.map((group) => {
+    const ms = members.filter((m) => m.groupId === group.id).sort((a, b) => a.order - b.order);
+    const ps = payments.filter((p) => p.groupId === group.id);
+    return { group, members: ms, payments: ps, calc: compute(group, ms, ps) };
+  });
+}
+
 export async function getGroupData(id) {
   const db = await getDB();
   const group = await db.get('groups', id);

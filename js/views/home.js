@@ -4,6 +4,8 @@ import { htg, parseAmount } from '../format.js';
 import { esc, openSheet, toast, LOGO } from '../ui.js';
 import { promptInstall, canInstall } from '../install.js';
 import { presetView } from './group.js';
+import { openSettings } from './settings.js';
+import { scheduleSync } from '../cloud.js';
 import { FREQUENCIES, scheduleFieldsHTML } from '../schedule.js';
 
 export async function showHome(app) {
@@ -42,6 +44,7 @@ export async function showHome(app) {
       <button class="btn ghost install" data-install data-action="install" ${canInstall() ? '' : 'hidden'}>Enstale aplikasyon an sou telefòn nan</button>
       <p class="footnote">Zouti sa a se yon kaye nimerik. Li pa jere lajan reyèl.<br>
       Done yo sere sou aparèy sa a sèlman. Ekspòte yon CSV regilyèman pou gen yon kopi.</p>
+      <button class="link" data-action="settings">Rapèl ak konfidansyalite</button>
     </main>
     ${items.length ? '<button class="fab" data-action="new-group"><span aria-hidden="true">＋</span> Nouvo sòl</button>' : ''}`;
 
@@ -50,7 +53,9 @@ export async function showHome(app) {
     if (!el) return;
     if (el.dataset.action === 'new-group') openNewGroup();
     if (el.dataset.action === 'install') promptInstall();
+    if (el.dataset.action === 'settings') openSettings();
   };
+  scheduleSync();
 }
 
 function openNewGroup() {

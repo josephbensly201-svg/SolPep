@@ -1,0 +1,34 @@
+name: Notifikasyon SòlPèp
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_reminders:
+        description: 'Fòse voye rapèl jodi a kounye a (tès)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enstale depandans
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+      - name: Voye notifikasyon yo
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FORCE_REMINDERS: ${{ inputs.force_reminders }}
+        run: node notify.mjs
