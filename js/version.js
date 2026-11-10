@@ -1,2 +1,2 @@
 /* Vèsyon aplikasyon an. Kenbe l menm jan ak VERSION nan service-worker.js. */
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.4.1';

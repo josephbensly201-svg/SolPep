@@ -3,7 +3,7 @@
  * Apre sa, aplikasyon an ouvri san entènèt. Fichye yo rafrechi an background
  * (stale-while-revalidate). Pou fòse yon mizajou, chanje VERSION anba a.
  */
-const VERSION = 'v1.4.0';
+const VERSION = 'v1.4.1';
 const CACHE = `jere-sol-${VERSION}`;
 
 const ASSETS = [
@@ -34,7 +34,7 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE)
-      .then((cache) => cache.addAll(ASSETS))
+      .then((cache) => Promise.all(ASSETS.map((u) => cache.add(new Request(u, { cache: 'reload' })))))  // 'reload' = toujou fichye fre, jamè kopi navigatè a
       .then(() => self.skipWaiting())
   );
 });
