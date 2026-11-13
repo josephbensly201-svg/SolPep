@@ -333,3 +333,12 @@ main.wrap { padding-top: 16px; }
 .backup-card b { font-size: 17px; }
 .backup-card span { color: #C7D0E6; font-size: 14px; }
 .backup-card .btn { margin-top: 4px; }
+
+/* ---------- Pataj ak vi "gade sèlman" ---------- */
+.share-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.view-only { background: #E4E8F1; color: var(--ink); font-size: 13px; font-weight: 600; padding: 8px 0; }
+.view-only .wrap { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.view-only .view-time { color: var(--muted); font-weight: 500; flex: 1; }
+.view-only .link { min-height: 32px; padding: 4px; }
+.matrix td .cell { display: grid; place-items: center; }
+a.btn { text-decoration: none; }

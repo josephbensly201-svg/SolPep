@@ -247,6 +247,27 @@ export async function ensureGroupMeta() {
   }
 }
 
+/* ---------- Pataj (lyen pou manm yo gade sèlman) ---------- */
+const TOKEN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';   // 32 karaktè = pa gen biais
+
+/** Jeton sekrè 24 karaktè (120 bit): enposib pou devine. */
+export function newShareToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => TOKEN_ALPHABET[b % 32]).join('');
+}
+
+/** token = '' pou retire aksè a. */
+export async function setShareToken(groupId, token) {
+  const db = await getDB();
+  const g = await db.get('groups', groupId);
+  if (!g) return null;
+  g.shareToken = token || '';
+  g.updatedAt = Date.now();
+  await db.put('groups', g);
+  return g;
+}
+
 /** Ranplase yon sòl lokal ak vèsyon ki nan sovgad la (restorasyon). */
 export async function importCloudSol(id, c) {
   const db = await getDB();
@@ -260,7 +281,7 @@ export async function importCloudSol(id, c) {
     id, name: c.name, code: c.code, amount: c.amount,
     frequency: c.frequency || undefined, startDate: c.startDate || undefined,
     status: c.status || 'active', createdAt: c.createdAt || Date.now(), updatedAt: c.updatedAt || Date.now(),
-    archivedAt: c.archivedAt || 0, finishedAt: c.finishedAt || 0
+    archivedAt: c.archivedAt || 0, finishedAt: c.finishedAt || 0, shareToken: c.shareToken || ''
   });
   oldMembers.forEach((m) => ms.delete(m.id));
   oldPayments.forEach((p) => ps.delete(p.id));

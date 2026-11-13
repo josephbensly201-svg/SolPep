@@ -124,3 +124,11 @@ Fichiers ajoutés : `js/firebase-config.js`, `js/cloud.js`, `js/views/settings.j
 - **Sovgad kont** : connexion avec Google (Firebase Auth). Chaque sòl est copié dans Firestore (`users/{uid}/sols/{solId}`).
   Sur un nouveau téléphone : se connecter restaure tous les sòl. En cas de conflit, la version la plus récente gagne (par sòl).
 - Règles de sécurité : `firestore.rules` (à copier dans Firebase → Firestore → Règles → Publier).
+
+## Partage en lecture seule avec les manm
+
+Menu ⋯ d'un sòl → « Pataje ak manm yo (gade sèlman) » (nécessite la sauvegarde Google). Un lien secret `…/#/v/<jeton>` est créé ;
+les manm l'ouvrent sans compte et voient le sòl en **lecture seule** (manch, tableau, totaux par manm).
+- Visible : noms des manm, montant, dates des manch, ce que chacun a payé. **Jamais** : code du sòl, notes des paiements, e-mail de l'organisateur.
+- L'organisateur peut **retirer l'accès** : le document public est supprimé, l'ancien lien cesse de marcher.
+- Règles Firestore : collection `shares/{jeton}` lisible document par document (`get`), jamais listable ; écriture réservée au propriétaire (voir `firestore.rules`).

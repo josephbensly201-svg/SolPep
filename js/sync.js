@@ -4,7 +4,7 @@
  * Done yo ki nan sovgad la: non sòl, kòd, montan, manm, peman, nòt. Règ Firestore yo pèmèt sèlman
  * pwopriyetè kont lan li yo. Sovgad la dwe aktive pa moun nan (kreye kont + dakò). */
 import { sdk, ensureUser, onDataChanged } from './cloud.js';
-import { getAllGroupsData, importCloudSol } from './db.js';
+import { getAllGroupsData, importCloudSol, setShareToken, newShareToken } from './db.js';
 
 const K = { acct: 'sp_account', pushed: 'sp_pushed', last: 'sp_lastbackup', auto: 'sp_autosync', prev: 'sp_prev_uid' };
 const ls = {
@@ -37,13 +37,77 @@ export function _toCloud({ group, members, payments }) {
   return {
     name: group.name, code: group.code, amount: group.amount,
     frequency: group.frequency || '', startDate: group.startDate || '',
-    status: group.status || 'active',
+    status: group.status || 'active', shareToken: group.shareToken || '',
     createdAt: group.createdAt || 0, updatedAt: group.updatedAt || 0,
     archivedAt: group.archivedAt || 0, finishedAt: group.finishedAt || 0,
     members: members.map((m) => ({ id: m.id, name: m.name, active: !!m.active, order: m.order })),
     payments: payments.map((p) => ({ id: p.id, memberId: p.memberId, round: p.round, amount: p.amount, note: p.note || '' })),
     schema: 1
   };
+}
+
+/**
+ * Sa manm yo wè (lekti sèlman): non sòl, montan, dat, non manm yo ak sa yo peye.
+ * PA gen: kòd sòl la, nòt peman yo, imèl òganizatè a.
+ */
+export function _toShare({ group, members, payments }, ownerUid) {
+  return {
+    ownerUid,
+    name: group.name, amount: group.amount,
+    frequency: group.frequency || '', startDate: group.startDate || '',
+    status: group.status || 'active',
+    updatedAt: group.updatedAt || Date.now(),
+    members: members.map((m) => ({ id: m.id, name: m.name, active: !!m.active, order: m.order })),
+    payments: payments.filter((p) => p.amount > 0).map((p) => ({ m: p.memberId, r: p.round, a: p.amount })),
+    schema: 1
+  };
+}
+
+export const shareLink = (token) =>
+  location.origin + location.pathname.replace(/index\.html$/, '') + '#/v/' + token;
+
+const notSignedIn = () => Object.assign(new Error('not-signed-in'), { code: 'not-signed-in' });
+
+async function findLocal(groupId) {
+  return (await getAllGroupsData()).find((x) => x.group.id === groupId);
+}
+
+/** Kreye yon lyen pataj pou yon sòl (bezwen kont Google). Retounen jeton an. */
+export async function createShare(groupId) {
+  const user = await accountUser();
+  if (!user) throw notSignedIn();
+  const { fsM, db } = await sdk();
+  const token = newShareToken();
+  await setShareToken(groupId, token);
+  try {
+    const local = await findLocal(groupId);
+    await fsM.setDoc(fsM.doc(db, 'shares', token), _toShare(local, user.uid));
+    await fsM.setDoc(fsM.doc(db, 'users', user.uid, 'sols', groupId), _toCloud(local));
+    const pushed = readMap();
+    pushed[groupId] = local.group.updatedAt || 0;
+    writeMap(pushed);
+  } catch (e) {
+    await setShareToken(groupId, '');       // anile: pa kite yon lyen ki pa mache
+    throw e;
+  }
+  return token;
+}
+
+/** Retire aksè a: efase dokiman piblik la dabò (sa ki enpòtan), epi jeton lokal la. */
+export async function revokeShare(groupId) {
+  const user = await accountUser();
+  if (!user) throw notSignedIn();
+  const local = await findLocal(groupId);
+  const token = local && local.group.shareToken;
+  if (!token) return;
+  const { fsM, db } = await sdk();
+  await fsM.deleteDoc(fsM.doc(db, 'shares', token));
+  await setShareToken(groupId, '');
+  const fresh = await findLocal(groupId);
+  await fsM.setDoc(fsM.doc(db, 'users', user.uid, 'sols', groupId), _toCloud(fresh));
+  const pushed = readMap();
+  pushed[groupId] = fresh.group.updatedAt || 0;
+  writeMap(pushed);
 }
 
 async function pushChanged(user) {
@@ -55,6 +119,9 @@ async function pushChanged(user) {
     const stamp = local.group.updatedAt || 0;
     if (pushed[local.group.id] === stamp) continue;
     await fsM.setDoc(fsM.doc(db, 'users', user.uid, 'sols', local.group.id), _toCloud(local));
+    if (local.group.shareToken) {                      // kenbe lyen pataj la ajou
+      await fsM.setDoc(fsM.doc(db, 'shares', local.group.shareToken), _toShare(local, user.uid));
+    }
     pushed[local.group.id] = stamp;
     count++;
   }

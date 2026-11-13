@@ -1,6 +1,8 @@
 /* Paj yon sòl: 3 onglè (Manch / Tablo / Manm), peman pasyèl, nòt, manm inaktif, ekspò CSV. */
 import * as db from '../db.js';
 import { scheduleSync } from '../cloud.js';
+import * as sync from '../sync.js';
+import { openSettings } from './settings.js';
 import { key, status } from '../calc.js';
 import { htg, num, toInput, parseAmount } from '../format.js';
 import { FREQUENCIES, dueDate, isPast, formatDate, formatDateShort, currentRound, scheduleFieldsHTML } from '../schedule.js';
@@ -415,6 +417,7 @@ function openMenu() {
           ? '<button class="menu-item" data-act="reactivate">Reaktive sòl la (bezwen kòd)</button>'
           : `<button class="menu-item" data-act="edit">Chanje non, montan oswa frekans</button>
              <button class="menu-item" data-act="code">Wè kòd sòl la</button>`}
+        <button class="menu-item" data-act="share">Pataje ak manm yo (gade sèlman)${g.shareToken ? ' ✓' : ''}</button>
         <button class="menu-item" data-act="csv">Ekspòte an CSV</button>
         ${ro ? '' : `<button class="menu-item" data-act="finish">Make sòl la fini</button>
              <button class="menu-item danger" data-act="archive">Achive sòl la (mete l nan istorik)</button>`}
@@ -424,8 +427,98 @@ function openMenu() {
         const b = e.target.closest('[data-act]');
         if (!b) return;
         close();
-        const actions = { edit: openEditGroup, csv: exportCsv, code: openCodeView, reactivate: openReactivate, finish: finishSol, archive: archiveSol };
+        const actions = { share: openShare, edit: openEditGroup, csv: exportCsv, code: openCodeView, reactivate: openReactivate, finish: finishSol, archive: archiveSol };
         if (actions[b.dataset.act]) actions[b.dataset.act]();
+      });
+    }
+  });
+}
+
+/* ----- Pataj ak manm yo (lekti sèlman) ----- */
+const SHARE_ERRORS = {
+  'permission-denied': 'Sèvè a refize. Verifye ke règ Firestore yo ajou (fichye firestore.rules).',
+  'not-signed-in': 'Ou dwe konekte ak Google dabò (Kont, sovgad ak rapèl).'
+};
+
+function openShare() {
+  const g = data.group;
+  const signed = sync.isSignedIn();
+  const link = g.shareToken ? sync.shareLink(g.shareToken) : '';
+  const waText = `Gade kijan sòl "${g.name}" ap mache: ${link}`;
+
+  let html;
+  if (!signed) {
+    html = `<p class="hint">Pou pataje sòl la ak manm yo, ou dwe aktive sovgad kont Google la dabò. Se li ki kenbe lyen an ak done yo an sekirite, epi ki pèmèt ou retire aksè a.</p>
+      <button type="button" class="btn primary" data-s="account">Aktive sovgad la</button>`;
+  } else if (!g.shareToken) {
+    html = `<p class="hint">Kreye yon lyen ou voye bay manm yo (WhatsApp, mesaj…). Yo ka wè koman sòl la ap mache, men yo <b>pa ka modifye anyen</b>.</p>
+      <ul class="share-list">
+        <li>✅ Yo wè: non manm yo, montan sòl la, dat manch yo ak sa chak moun peye.</li>
+        <li>🚫 Yo pa wè: kòd sòl la, nòt peman yo, ni imèl ou.</li>
+        <li>🔒 Ou ka retire aksè a nenpòt ki lè.</li>
+      </ul>
+      <label class="check-line"><input type="checkbox" data-s-consent> <span>Mwen konprann: nenpòt moun ki gen lyen an ka wè done sa yo. Mwen pral voye l sèlman bay manm sòl la.</span></label>
+      <p class="error" data-error hidden></p>
+      <button type="button" class="btn primary" data-s="create">Kreye lyen pataj la</button>`;
+  } else {
+    html = `<p class="hint">Voye lyen sa a bay manm yo. Yo ka wè sòl la, yo pa ka modifye l.</p>
+      <label class="field"><span>Lyen pataj</span><input type="text" readonly value="${esc(link)}" data-s-link onfocus="this.select()"></label>
+      <div class="actions">
+        <button type="button" class="btn gold" data-s="copy">Kopye lyen an</button>
+        <a class="btn primary" data-s="wa" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(waText)}">WhatsApp</a>
+      </div>
+      <p class="hint">Chanjman ou fè yo parèt pou manm yo apre kèk segonn (lè ou gen entènèt).</p>
+      <button type="button" class="link danger center" data-s="revoke">Retire aksè manm yo</button>`;
+  }
+
+  openSheet({
+    title: 'Pataje ak manm yo',
+    html: `<div class="stack">${html}</div>`,
+    onMount(el, close) {
+      el.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-s]');
+        if (!b) return;
+        const act = b.dataset.s;
+        if (act === 'account') { close(); openSettings(); return; }
+        if (act === 'copy') {
+          try { await navigator.clipboard.writeText(link); toast('Lyen an kopye.'); }
+          catch { const i = el.querySelector('[data-s-link]'); i.select(); toast('Kopye lyen an ak men.'); }
+          return;
+        }
+        if (act === 'create') {
+          const err = el.querySelector('[data-error]');
+          if (!el.querySelector('[data-s-consent]').checked) { err.textContent = 'Koche kare a pou kontinye.'; err.hidden = false; return; }
+          b.disabled = true;
+          try {
+            await sync.createShare(g.id);
+            close();
+            await refresh();
+            openShare();
+          } catch (ex) {
+            console.warn(ex);
+            b.disabled = false;
+            err.textContent = SHARE_ERRORS[ex && ex.code] || 'Pa ka kreye lyen an. Verifye entènèt la epi eseye ankò.';
+            err.hidden = false;
+          }
+          return;
+        }
+        if (act === 'revoke') {
+          const ok = await confirmDialog({
+            title: 'Retire aksè manm yo?',
+            message: 'Lyen ki voye a pap mache ankò. Ou ka kreye yon nouvo lyen apre.',
+            confirmLabel: 'Retire aksè', danger: true
+          });
+          if (!ok) return;
+          try {
+            await sync.revokeShare(g.id);
+            close();
+            await refresh();
+            toast('Aksè a retire. Ansyen lyen an pa mache ankò.');
+          } catch (ex) {
+            console.warn(ex);
+            toast(SHARE_ERRORS[ex && ex.code] || 'Pa ka retire aksè a kounye a. Verifye entènèt la.', 'error');
+          }
+        }
       });
     }
   });

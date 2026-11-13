@@ -4,6 +4,7 @@ import { showHome } from './views/home.js';
 import { showGroup } from './views/group.js';
 import { toast, esc } from './ui.js';
 import { initCloud } from './cloud.js';
+import { showShared } from './views/shared.js';
 import { initSync } from './sync.js';
 import { APP_VERSION } from './version.js';
 import './install.js';
@@ -12,8 +13,10 @@ const app = document.getElementById('app');
 
 async function route() {
   const match = (location.hash || '#/').match(/^#\/g\/([^/?]+)/);
+  const shared = (location.hash || '').match(/^#\/v\/([^/?]+)/);
   try {
-    if (match) await showGroup(app, decodeURIComponent(match[1]));
+    if (shared) await showShared(app, decodeURIComponent(shared[1]));
+    else if (match) await showGroup(app, decodeURIComponent(match[1]));
     else await showHome(app);
     window.scrollTo(0, 0);
   } catch (err) {
@@ -94,7 +97,8 @@ async function init() {
   window.addEventListener('hashchange', route);
   await route();
 
-  initCloud({
+  // Moun k ap gade yon sòl pataje pa konte nan estatistik yo epi pa resevwa demann pèmisyon.
+  if (!/^#\/v\//.test(location.hash)) initCloud({
     onConfig: applyConfig,
     onForeground: (d) => toast([d.title, d.body].filter(Boolean).join(' — '))
   }).catch((err) => console.warn('Cloud endisponib:', err));
