@@ -114,3 +114,13 @@ Fichiers ajoutés : `js/firebase-config.js`, `js/cloud.js`, `js/views/settings.j
 - **Secret requis** dans GitHub (*Settings → Secrets and variables → Actions*) : `FIREBASE_SERVICE_ACCOUNT` = contenu JSON de la clé de compte de service.
   Ne jamais mettre ce fichier dans le dépôt.
 - Garder `APP_VERSION` (`js/version.js`) et `VERSION` (`service-worker.js`) identiques.
+
+
+## Kòd sòl, istorik ak sovgad kont (v1.5.0)
+
+- Chak sòl gen yon **kòd inik** (`SOL-K7M4QX`), visible dans le menu du sòl (« Wè kòd sòl la »).
+- **Rien n'est effacé** : « Achive sòl la » ou « Make sòl la fini » grise le sòl et le place dans l'onglet **Istorik**.
+  Pour le réactiver, il faut saisir son code (5 essais, puis 30 secondes d'attente).
+- **Sovgad kont** : connexion avec Google (Firebase Auth). Chaque sòl est copié dans Firestore (`users/{uid}/sols/{solId}`).
+  Sur un nouveau téléphone : se connecter restaure tous les sòl. En cas de conflit, la version la plus récente gagne (par sòl).
+- Règles de sécurité : `firestore.rules` (à copier dans Firebase → Firestore → Règles → Publier).

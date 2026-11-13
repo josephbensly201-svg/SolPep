@@ -1,9 +1,10 @@
 /* Pwen antre: routè (hash), migrasyon, service worker. */
-import { migrateLegacy } from './db.js';
+import { migrateLegacy, ensureGroupMeta } from './db.js';
 import { showHome } from './views/home.js';
 import { showGroup } from './views/group.js';
 import { toast, esc } from './ui.js';
 import { initCloud } from './cloud.js';
+import { initSync } from './sync.js';
 import { APP_VERSION } from './version.js';
 import './install.js';
 
@@ -86,6 +87,7 @@ async function init() {
   } catch (err) {
     console.error('Migrasyon echwe:', err);
   }
+  try { await ensureGroupMeta(); } catch (err) { console.error('Kòd sòl yo pa ajoute:', err); }
   // Mande navigatè a pou pa efase done yo otomatikman.
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
@@ -96,6 +98,10 @@ async function init() {
     onConfig: applyConfig,
     onForeground: (d) => toast([d.title, d.body].filter(Boolean).join(' — '))
   }).catch((err) => console.warn('Cloud endisponib:', err));
+
+  // Sovgad kont: si kont lan konekte, senkronize an silans (epi rafrechi paj la si gen nouvo sòl).
+  initSync().then((pulled) => { if (pulled) window.dispatchEvent(new HashChangeEvent('hashchange')); })
+    .catch((err) => console.warn('Senkwonizasyon echwe:', err));
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     navigator.serviceWorker.register('service-worker.js').catch((err) => console.warn('Service worker pa enstale:', err));

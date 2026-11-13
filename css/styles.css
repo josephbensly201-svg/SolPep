@@ -311,3 +311,25 @@ main.wrap { padding-top: 16px; }
 .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; font-weight: 600; }
 .switch-row input { width: 52px; height: 30px; accent-color: var(--ink); flex: none; }
 .stack section + section { border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* ---------- Istorik, kòd, kont ---------- */
+.tabs.two { grid-template-columns: repeat(2, 1fr); }
+.home-tabs { margin-bottom: 12px; }
+.group-row.dim { opacity: .6; filter: grayscale(1); }
+.ro .rows, .ro .matrix-wrap, .ro .members { opacity: .65; filter: grayscale(.8); }
+.ro .add-member, .ro .member-actions { display: none; }
+.ro-banner, .done-banner { display: grid; gap: 6px; padding: 14px; border-radius: var(--radius); margin-bottom: 14px; }
+.ro-banner { background: #E4E8F1; color: var(--ink); }
+.ro-banner span, .done-banner span { font-size: 14px; color: var(--muted); }
+.done-banner { background: var(--paid-bg); color: var(--paid); }
+.code-big { font-size: 30px; font-weight: 800; letter-spacing: 2px; text-align: center; padding: 16px; margin: 6px 0 12px;
+  background: var(--bg); border-radius: var(--radius); user-select: all; }
+.check-line { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.4; }
+.check-line input { width: 22px; height: 22px; flex: none; margin-top: 2px; accent-color: var(--ink); }
+.auth-links { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; }
+
+/* ---------- Kat sovgad (akèy) ---------- */
+.backup-card { display: grid; gap: 8px; background: var(--ink); color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.backup-card b { font-size: 17px; }
+.backup-card span { color: #C7D0E6; font-size: 14px; }
+.backup-card .btn { margin-top: 4px; }

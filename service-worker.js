@@ -3,7 +3,7 @@
  * Apre sa, aplikasyon an ouvri san entènèt. Fichye yo rafrechi an background
  * (stale-while-revalidate). Pou fòse yon mizajou, chanje VERSION anba a.
  */
-const VERSION = 'v1.4.1';
+const VERSION = 'v1.5.1';
 const CACHE = `jere-sol-${VERSION}`;
 
 const ASSETS = [
@@ -18,6 +18,7 @@ const ASSETS = [
   './js/install.js',
   './js/schedule.js',
   './js/cloud.js',
+  './js/sync.js',
   './js/version.js',
   './js/firebase-config.js',
   './js/views/settings.js',

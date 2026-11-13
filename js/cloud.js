@@ -24,7 +24,7 @@ const store = {
 /* Chajman SDK Firebase (dinamik: pa chaje si pa bezwen)               */
 /* ------------------------------------------------------------------ */
 let sdkPromise = null;
-function sdk() {
+export function sdk() {
   if (!sdkPromise) {
     sdkPromise = (async () => {
       const [appM, authM, fsM] = await Promise.all([
@@ -39,7 +39,7 @@ function sdk() {
   return sdkPromise;
 }
 
-async function ensureUser() {
+export async function ensureUser() {
   const { auth, authM } = await sdk();
   const existing = await new Promise((resolve) => {
     const off = authM.onAuthStateChanged(auth, (u) => { off(); resolve(u); });
@@ -216,7 +216,12 @@ export async function disableNotifications() {
 
 /** Mete lis rapèl yo ajou nan sèvè a (sèlman si li chanje). */
 let syncTimer = null;
+const hooks = [];
+/** Lòt modil (sovgad kont) ka enskri pou konnen lè done yo chanje. */
+export const onDataChanged = (fn) => hooks.push(fn);
+
 export function scheduleSync() {
+  hooks.forEach((fn) => { try { fn(); } catch { /* pa grav */ } });
   if (notifState() !== 'on' || !statsEnabled()) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {

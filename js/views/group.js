@@ -57,7 +57,7 @@ function render() {
           <a class="icon-btn on-dark" href="#/" aria-label="Retounen nan lis sòl yo">‹</a>
           <div class="titles">
             <h1>${esc(group.name)}</h1>
-            <p>${htg(group.amount)} ${FREQUENCIES[group.frequency] ? FREQUENCIES[group.frequency].short : 'pa manch'} · ${calc.activeCount} manm aktif</p>
+            <p>${htg(group.amount)} ${FREQUENCIES[group.frequency] ? FREQUENCIES[group.frequency].short : 'pa manch'} · ${calc.activeCount} manm aktif${group.status === 'finished' ? ' · fini' : group.status === 'archived' ? ' · achive' : ''}</p>
           </div>
           <button class="icon-btn on-dark" data-action="menu" aria-label="Plis opsyon">⋯</button>
         </div>
@@ -74,7 +74,8 @@ function render() {
         ${tabButton('tour', 'Manch')}${tabButton('table', 'Tablo')}${tabButton('members', 'Manm')}
       </div>
     </div></div>
-    <main class="wrap" role="tabpanel">
+    <main class="wrap ${group.status !== 'active' ? 'ro' : ''}" role="tabpanel">
+      ${statusBanner()}
       ${view.tab === 'tour' ? renderRounds() : view.tab === 'table' ? renderMatrix() : renderMembers()}
     </main>`;
 
@@ -224,11 +225,14 @@ function bind() {
       case 'tab': view.tab = tab; render(); break;
       case 'pick-round': view.round = Number(round); render(); break;
       case 'goto-members': view.tab = 'members'; render(); root.querySelector('.add-member input')?.focus(); break;
-      case 'pay': openPayment(member, Number(round)); break;
+      case 'pay': if (blocked()) break; openPayment(member, Number(round)); break;
       case 'menu': openMenu(); break;
-      case 'rename-member': openRename(member); break;
-      case 'deactivate-member': deactivate(member); break;
+      case 'reactivate-sol': openReactivate(); break;
+      case 'finish-sol': finishSol(); break;
+      case 'rename-member': if (blocked()) break; openRename(member); break;
+      case 'deactivate-member': if (blocked()) break; deactivate(member); break;
       case 'reactivate-member':
+        if (blocked()) break;
         await db.setMemberActive(member, true);
         await refresh();
         toast('Manm nan aktif ankò.');
@@ -401,32 +405,135 @@ async function deactivate(memberId) {
 
 /* ----- Menu sòl la ----- */
 function openMenu() {
+  const g = data.group;
+  const ro = g.status !== 'active';
   openSheet({
-    title: data.group.name,
+    title: g.name,
     html: `
       <div class="menu">
-        <button class="menu-item" data-act="edit">Chanje non oswa montan sòl la</button>
+        ${ro
+          ? '<button class="menu-item" data-act="reactivate">Reaktive sòl la (bezwen kòd)</button>'
+          : `<button class="menu-item" data-act="edit">Chanje non, montan oswa frekans</button>
+             <button class="menu-item" data-act="code">Wè kòd sòl la</button>`}
         <button class="menu-item" data-act="csv">Ekspòte an CSV</button>
-        <button class="menu-item danger" data-act="delete">Efase sòl la</button>
+        ${ro ? '' : `<button class="menu-item" data-act="finish">Make sòl la fini</button>
+             <button class="menu-item danger" data-act="archive">Achive sòl la (mete l nan istorik)</button>`}
       </div>`,
     onMount(el, close) {
-      el.querySelector('.menu').addEventListener('click', async (e) => {
+      el.querySelector('.menu').addEventListener('click', (e) => {
         const b = e.target.closest('[data-act]');
         if (!b) return;
         close();
-        if (b.dataset.act === 'edit') openEditGroup();
-        if (b.dataset.act === 'csv') exportCsv();
-        if (b.dataset.act === 'delete') {
-          const ok = await confirmDialog({
-            title: 'Efase sòl la nèt?',
-            message: `"${data.group.name}" ak tout manm ak peman li yo ap disparèt. Aksyon sa a pa ka defèt.`,
-            confirmLabel: 'Efase nèt', danger: true
-          });
-          if (!ok) return;
-          await db.deleteGroup(view.id);
-          location.hash = '#/';
-          toast('Sòl la efase.');
+        const actions = { edit: openEditGroup, csv: exportCsv, code: openCodeView, reactivate: openReactivate, finish: finishSol, archive: archiveSol };
+        if (actions[b.dataset.act]) actions[b.dataset.act]();
+      });
+    }
+  });
+}
+
+/* ----- Estati: achive / fini / reaktive (anyen pa efase nèt) ----- */
+function blocked() {
+  if (data.group.status === 'active') return false;
+  toast('Sòl sa a nan istorik. Reaktive l ak kòd li pou modifye l.', 'error');
+  return true;
+}
+
+function statusBanner() {
+  const g = data.group;
+  if (g.status !== 'active') {
+    return `<div class="ro-banner"><b>${g.status === 'finished' ? 'Sòl sa a fini.' : 'Sòl sa a achive.'}</b>
+      <span>Li nan istorik epi li griz. Pou modifye l ankò, reaktive l ak kòd li.</span>
+      <button class="btn gold" data-action="reactivate-sol">Reaktive ak kòd</button></div>`;
+  }
+  const allDone = data.members.length > 0 && data.calc.perRound.every((r) => r.expected > 0 && r.got >= r.expected);
+  if (allDone) {
+    return `<div class="done-banner"><b>Tout manch yo kolekte 🎉</b><span>Sòl la fini. Mete l nan istorik?</span>
+      <button class="btn primary" data-action="finish-sol">Make sòl la fini</button></div>`;
+  }
+  return '';
+}
+
+async function archiveSol() {
+  const g = data.group;
+  const ok = await confirmDialog({
+    title: 'Achive sòl la?',
+    message: `"${g.name}" ap vin griz epi ale nan Istorik. Anyen pa efase. Pou reaktive l, ou ap bezwen kòd li a: ${g.code}. Note l kounye a.`,
+    confirmLabel: 'Achive', danger: true
+  });
+  if (!ok) return;
+  await db.setGroupStatus(g.id, 'archived');
+  scheduleSync();
+  location.hash = '#/';
+  toast('Sòl la nan istorik.');
+}
+
+async function finishSol() {
+  const g = data.group;
+  const ok = await confirmDialog({
+    title: 'Make sòl la fini?',
+    message: `Sòl la ap ale nan Istorik epi li pap modifyab ankò. Pou reaktive l, ou ap bezwen kòd li a: ${g.code}.`,
+    confirmLabel: 'Make fini'
+  });
+  if (!ok) return;
+  await db.setGroupStatus(g.id, 'finished');
+  await refresh();
+  toast('Sòl la fini. Li nan istorik.');
+}
+
+function openCodeView() {
+  const g = data.group;
+  openSheet({
+    title: 'Kòd sòl la',
+    html: `
+      <p class="sheet-sub">Chak sòl gen yon kòd inik. Ou bezwen l pou reaktive sòl la si l nan istorik.</p>
+      <p class="code-big">${esc(g.code)}</p>
+      <div class="actions">
+        <button type="button" class="btn ghost" data-copy>Kopye</button>
+        <button type="button" class="btn primary" data-close>Fèmen</button>
+      </div>
+      <p class="hint">Note kòd la yon kote ou sèlman ka jwenn li (kaye, mesaj ba tèt ou). Pa pataje l ak lòt moun.</p>`,
+    onMount(el) {
+      el.querySelector('[data-copy]').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(g.code); toast('Kòd la kopye.'); }
+        catch { toast('Pa ka kopye. Note l a la men.', 'error'); }
+      });
+    }
+  });
+}
+
+let codeFails = 0, lockUntil = 0;
+function openReactivate() {
+  const g = data.group;
+  openSheet({
+    title: 'Reaktive sòl la',
+    html: `
+      <form class="stack" novalidate>
+        <p class="sheet-sub">Antre kòd sòl "${esc(g.name)}" la pou reaktive l.</p>
+        <label class="field"><span>Kòd sòl la</span>
+          <input name="code" autocomplete="off" autocapitalize="characters" placeholder="SOL-XXXXXX" data-autofocus></label>
+        <p class="error" data-error hidden></p>
+        <div class="actions">
+          <button type="button" class="btn ghost" data-close>Anile</button>
+          <button type="submit" class="btn primary">Reaktive</button>
+        </div>
+      </form>`,
+    onMount(el, close) {
+      const form = el.querySelector('form');
+      const err = el.querySelector('[data-error]');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fail = (m) => { err.textContent = m; err.hidden = false; };
+        if (Date.now() < lockUntil) return fail('Twòp esè. Tann kèk segonn epi eseye ankò.');
+        if (!db.codeMatches(form.elements.code.value, g.code)) {
+          codeFails++;
+          if (codeFails >= 5) { lockUntil = Date.now() + 30000; codeFails = 0; }
+          return fail('Kòd la pa kòrèk.');
         }
+        codeFails = 0;
+        await db.setGroupStatus(g.id, 'active');
+        close();
+        await refresh();
+        toast('Sòl la reaktive.');
       });
     }
   });
