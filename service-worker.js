@@ -3,7 +3,7 @@
  * Apre sa, aplikasyon an ouvri san entènèt. Fichye yo rafrechi an background
  * (stale-while-revalidate). Pou fòse yon mizajou, chanje VERSION anba a.
  */
-const VERSION = 'v1.6.0';
+const VERSION = 'v1.6.2';
 const CACHE = `jere-sol-${VERSION}`;
 
 const ASSETS = [

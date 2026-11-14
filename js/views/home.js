@@ -2,7 +2,7 @@
 import * as db from '../db.js';
 import { htg, parseAmount } from '../format.js';
 import { esc, openSheet, toast, LOGO } from '../ui.js';
-import { promptInstall, canInstall } from '../install.js';
+import { promptInstall, isStandalone } from '../install.js';
 import { presetView } from './group.js';
 import { openSettings } from './settings.js';
 import { scheduleSync } from '../cloud.js';
@@ -36,14 +36,16 @@ export async function showHome(app) {
       </li>`;
   }).join('');
 
+  const installBtn = `<button class="btn gold install-btn" data-install data-action="install" ${isStandalone() ? 'hidden' : ''}>📲 Telechaje aplikasyon an</button>`;
   let body;
-  if (shown.length) body = `<ul class="group-list">${rows}</ul>`;
+  if (shown.length) body = `<ul class="group-list">${rows}</ul>${tab === 'active' ? installBtn : ''}`;
   else if (tab === 'history') {
     body = `<div class="empty"><h2>Istorik la vid</h2><p>Sòl ou fini oswa achive yo ap parèt isit la, grize. Anyen pa janm efase nèt.</p></div>`;
   } else {
     body = `<div class="empty"><h2>Poko gen sòl</h2>
       <p>Kreye premye sòl ou a, ajoute manm yo, epi make peman yo kote ou ye a.</p>
-      <button class="btn primary" data-action="new-group">Kreye yon sòl</button></div>`;
+      <button class="btn primary" data-action="new-group">Kreye yon sòl</button>
+      ${installBtn}</div>`;
   }
 
   app.innerHTML = `
@@ -64,7 +66,6 @@ export async function showHome(app) {
         <button role="tab" class="tab ${tab === 'history' ? 'on' : ''}" aria-selected="${tab === 'history'}" data-action="home-tab" data-tab="history">Istorik (${history.length})</button>
       </div>
       ${body}
-      <button class="btn ghost install" data-install data-action="install" ${canInstall() ? '' : 'hidden'}>Enstale aplikasyon an sou telefòn nan</button>
       <p class="footnote">Zouti sa a se yon kaye nimerik. Li pa jere lajan reyèl.<br>
       Pou pa pèdi sòl ou si telefòn nan pèdi, aktive sovgad kont lan.</p>
       <button class="link" data-action="settings">Kont, sovgad ak rapèl</button>
